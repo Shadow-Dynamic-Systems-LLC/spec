@@ -1,0 +1,21 @@
+# Library Extraction Backlog
+#
+# Tracks library parts identified during change promotion but deferred for extraction.
+# Entries are written by /sds:extract-library-parts at governed tier when a candidate
+# is explicitly deferred rather than accepted for immediate extraction.
+#
+# Schema:
+#   - id: unique backlog entry ID
+#     change_id: the change where the candidate was identified
+#     candidate_type: capability | requirement | scenario | control | architecture-decision | evidence-pattern
+#     description: what the candidate is
+#     suggested_id: proposed library part ID
+#     suggested_variables: list of concrete values that could become variables
+#     deferral_justification: why extraction was deferred
+#     deferred_at: ISO8601 timestamp
+#     deferred_by: role or identity that deferred
+#     status: pending | extracted | abandoned
+#     resolved_at: ISO8601 timestamp or null
+#     resolved_as: library part ID if extracted, null otherwise
+
+entries: []

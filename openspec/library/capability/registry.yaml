@@ -1,0 +1,338 @@
+# SDS Primitive Capability Registry
+#
+# This file is the authoritative source for all primitive capabilities.
+# New primitives must be reviewed before addition (see doctrine/governance-rules.md rule 8).
+# Deprecated entries must be moved to archived-parts/ — never deleted.
+#
+# Schema: each entry follows the registry.yaml schema defined in SPEC.md §Reusable Parts Library.
+
+- id: human_approval_gate
+  name: Human Approval Gate
+  type: capability
+  description: >
+    Requires explicit human approval before a consequential or irreversible action
+    is executed. Produces an auditable decision artifact regardless of approval outcome.
+  domain_tags:
+    - governance
+    - human-in-the-loop
+    - regulated
+  variables:
+    - name: action_proposal_type
+      type: string
+      description: The type name of the action proposal object passed to the gate
+      default: ActionProposal
+    - name: actor_role_type
+      type: string
+      description: The type name of the actor role object
+      default: Role
+    - name: approval_token_type
+      type: string
+      description: The type name of the approval token produced on approval
+      default: ApprovalToken
+    - name: risk_threshold
+      type: enum[low, medium, high, critical]
+      description: Minimum risk level that triggers this gate
+      default: medium
+  preconditions:
+    - actor_role in authorized_roles
+    - action_proposal.risk_level >= risk_threshold
+  known_dependencies:
+    - audit_log
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: audit_log
+  name: Audit Log
+  type: capability
+  description: >
+    Emits a cryptographically bound audit record for an action or decision.
+    The record is append-only and includes actor, action, timestamp, and outcome.
+    Idempotent — safe to invoke multiple times for the same event.
+  domain_tags:
+    - governance
+    - compliance
+    - regulated
+  variables:
+    - name: event_type
+      type: string
+      description: The type of event being recorded (e.g., ApprovalDecision, ActionExecuted)
+      default: AuditEvent
+    - name: actor_id_field
+      type: string
+      description: Field name on the event that identifies the acting party
+      default: actor_id
+    - name: retention_days
+      type: integer
+      description: How long audit records are retained
+      default: 2555
+  preconditions: []
+  known_dependencies: []
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: idempotent_retry
+  name: Idempotent Retry
+  type: capability
+  description: >
+    Safely retries a failed operation without side effects. Requires the target
+    operation to be idempotent. Bounded by a configurable retry limit and delay.
+  domain_tags:
+    - reliability
+    - orchestration
+  variables:
+    - name: max_retries
+      type: integer
+      description: Maximum number of retry attempts before giving up
+      default: 3
+    - name: retry_delay_ms
+      type: integer
+      description: Delay between retry attempts in milliseconds
+      default: 1000
+    - name: backoff_multiplier
+      type: float
+      description: Exponential backoff multiplier applied to retry_delay_ms each attempt
+      default: 2.0
+  preconditions:
+    - target_operation.idempotent == true
+    - target_operation.external == false or explicit_retry_approved == true
+  known_dependencies: []
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: external_api_call
+  name: External API Call
+  type: capability
+  description: >
+    Crosses a trust boundary to call an external service. Non-reversible and
+    non-idempotent by default. Requires explicit approval gate for medium+ risk
+    actions and produces an audit record on every invocation.
+  domain_tags:
+    - integration
+    - governance
+  variables:
+    - name: endpoint_url
+      type: string
+      description: The target endpoint URL (must be in approved_endpoints list)
+      default: null
+    - name: auth_method
+      type: enum[bearer, api_key, oauth2, mutual_tls]
+      description: Authentication method used to call the endpoint
+      default: bearer
+    - name: timeout_ms
+      type: integer
+      description: Request timeout in milliseconds
+      default: 30000
+  preconditions:
+    - endpoint_url in approved_endpoints
+    - auth_credentials are present and valid
+  known_dependencies:
+    - audit_log
+    - human_approval_gate
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: escalation_policy
+  name: Escalation Policy
+  type: capability
+  description: >
+    Routes execution to a higher authority when a triggering condition is met.
+    External (crosses organizational boundary) and non-reversible — the escalation
+    event is recorded and cannot be un-sent.
+  domain_tags:
+    - governance
+    - human-in-the-loop
+    - regulated
+  variables:
+    - name: trigger_condition
+      type: string
+      description: The condition expression that activates escalation
+      default: null
+    - name: target_role
+      type: string
+      description: The role or system that receives the escalation
+      default: null
+    - name: escalation_mechanism
+      type: enum[notification, blocking_request, async_queue]
+      description: How the escalation is delivered
+      default: blocking_request
+  preconditions:
+    - escalation_target is reachable
+    - trigger_condition is evaluable at invocation time
+  known_dependencies:
+    - audit_log
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: memory_snapshot
+  name: Memory Snapshot
+  type: capability
+  description: >
+    Captures agent memory state at a point in time. Reversible (the snapshot can
+    be discarded) and idempotent (capturing the same state twice produces equivalent
+    snapshots). Used as a prerequisite for deterministic_replay.
+  domain_tags:
+    - reliability
+    - orchestration
+    - agent
+  variables:
+    - name: scope
+      type: enum[full, working_memory, long_term, episodic]
+      description: Which portion of agent memory to capture
+      default: working_memory
+    - name: retention_period_hours
+      type: integer
+      description: How long the snapshot is retained before expiry
+      default: 72
+    - name: snapshot_id_field
+      type: string
+      description: Field name where the snapshot ID is stored in the output
+      default: snapshot_id
+  preconditions: []
+  known_dependencies: []
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: deterministic_replay
+  name: Deterministic Replay
+  type: capability
+  description: >
+    Replays agent execution from a memory snapshot to reproduce a prior state or
+    verify behavior. Reversible and idempotent. Requires a valid memory_snapshot
+    to exist before invocation.
+  domain_tags:
+    - reliability
+    - debugging
+    - agent
+  variables:
+    - name: snapshot_id
+      type: string
+      description: The ID of the memory snapshot to replay from
+      default: null
+    - name: replay_scope
+      type: enum[full, partial]
+      description: Whether to replay the full execution or a subset of steps
+      default: full
+    - name: max_steps
+      type: integer
+      description: Maximum number of execution steps to replay (null = unlimited)
+      default: null
+  preconditions:
+    - snapshot_id references an existing, unexpired memory_snapshot
+    - snapshot integrity hash is valid
+  known_dependencies:
+    - memory_snapshot
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: reversible_mutation
+  name: Reversible Mutation
+  type: capability
+  description: >
+    Mutates system state with a guaranteed rollback path. The mutation is
+    non-idempotent (applying it twice changes state twice) but reversible within
+    the rollback window.
+  domain_tags:
+    - data
+    - reliability
+    - governance
+  variables:
+    - name: mutation_type
+      type: string
+      description: The category of state mutation (e.g., database_write, file_update)
+      default: null
+    - name: rollback_window_ms
+      type: integer
+      description: Time window in milliseconds during which rollback is guaranteed
+      default: 300000
+    - name: rollback_target
+      type: string
+      description: The resource or system that must be accessible for rollback to succeed
+      default: null
+  preconditions:
+    - rollback_target exists and is accessible
+    - current_state can be captured before mutation
+  known_dependencies:
+    - audit_log
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: cost_gate
+  name: Cost Gate
+  type: capability
+  description: >
+    Blocks execution when the estimated cost of an action exceeds a configured
+    threshold. Idempotent — evaluating cost does not itself incur cost. Internal
+    (does not cross a trust boundary). Non-reversible in the sense that a block
+    decision is final for the current invocation.
+  domain_tags:
+    - governance
+    - cost-control
+    - agent
+  variables:
+    - name: cost_threshold
+      type: number
+      description: The maximum allowed cost before execution is blocked
+      default: null
+    - name: currency
+      type: string
+      description: Currency or unit for cost measurement (e.g., USD, tokens, credits)
+      default: USD
+    - name: measurement_unit
+      type: enum[per_call, per_token, per_request, per_minute]
+      description: How cost is measured
+      default: per_call
+  preconditions:
+    - cost estimate is computable before execution
+    - cost_threshold is set and greater than zero
+  known_dependencies: []
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null
+
+- id: scope_boundary
+  name: Scope Boundary
+  type: capability
+  description: >
+    Enforces agent action scope limits. Blocks actions that fall outside the
+    declared allowed_actions or allowed_resources sets. Idempotent — evaluating
+    scope does not change state. Internal — does not cross trust boundaries itself.
+  domain_tags:
+    - governance
+    - security
+    - agent
+  variables:
+    - name: allowed_actions
+      type: list[string]
+      description: Exhaustive list of action types the agent is permitted to take
+      default: []
+    - name: allowed_resources
+      type: list[string]
+      description: Resource identifiers or patterns the agent may access
+      default: []
+    - name: tenant_scope
+      type: enum[single_tenant, multi_tenant_isolated, cross_tenant]
+      description: Whether the agent may operate across tenant boundaries
+      default: single_tenant
+  preconditions: []
+  known_dependencies: []
+  last_used_in: []
+  version: 1.0.0
+  status: active
+  deprecated_by: null

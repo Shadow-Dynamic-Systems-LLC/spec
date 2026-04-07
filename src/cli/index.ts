@@ -23,12 +23,25 @@ import {
   templatesCommand,
   schemasCommand,
   newChangeCommand,
+  sdsNewChangeCommand,
+  sdsGovernanceReviewCommand,
+  sdsComposeFromLibraryCommand,
+  sdsExtractLibraryPartsCommand,
+  sdsCompileBamlCommand,
+  sdsCheckDriftCommand,
+  sdsCompileSchemaCommand,
+  sdsComputeSurfaceCommand,
+  sdsSimulateCapabilityCommand,
+  sdsTraceabilityCheckCommand,
   DEFAULT_SCHEMA,
   type StatusOptions,
   type InstructionsOptions,
   type TemplatesOptions,
   type SchemasOptions,
   type NewChangeOptions,
+  type SdsNewChangeOptions,
+  type SdsTier,
+  type ReviewRole,
 } from '../commands/workflow/index.js';
 import { maybeShowTelemetryNotice, trackCommand, shutdown } from '../telemetry/index.js';
 
@@ -500,6 +513,203 @@ newCmd
   .action(async (name: string, options: NewChangeOptions) => {
     try {
       await newChangeCommand(name, options);
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// ═══════════════════════════════════════════════════════════
+// SDS Commands
+// ═══════════════════════════════════════════════════════════
+
+// sds new-change command
+const sdsCmd = program
+  .command('sds')
+  .description('SDS-Spec governance commands');
+
+sdsCmd
+  .command('new-change <name>')
+  .description('Create a new SDS change with a tier-appropriate workflow schema')
+  .option('--tier <tier>', 'Workflow tier: lean | standard | brownfield | governed (default: lean)', 'lean')
+  .option('--description <text>', 'Description to add to README.md')
+  .action(async (name: string, options: { tier?: string; description?: string }) => {
+    try {
+      await sdsNewChangeCommand(name, {
+        tier: options.tier as SdsTier | undefined,
+        description: options.description,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('governance-review')
+  .description('Output a scoped review session for an AI persona role')
+  .requiredOption('--role <role>', 'Review role: analyst | pm | architect | governor | verifier')
+  .option('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { role: string; change?: string; json?: boolean }) => {
+    try {
+      await sdsGovernanceReviewCommand({
+        role: options.role as ReviewRole,
+        change: options.change,
+        json: options.json,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('compile-baml')
+  .description('Generate BAML function stubs from capability.yaml')
+  .option('--change <id>', 'Change name')
+  .option('--dry-run', 'Preview output without writing files')
+  .option('--force', 'Overwrite existing generated files')
+  .action(async (options: { change?: string; dryRun?: boolean; force?: boolean }) => {
+    try {
+      await sdsCompileBamlCommand({
+        change: options.change,
+        dryRun: options.dryRun,
+        force: options.force,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('check-drift')
+  .description('Validate capability output hash against validation.hash in capability.yaml')
+  .option('--change <id>', 'Change name')
+  .option('--update-hash', 'Write computed hash to capability.yaml validation block')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change?: string; updateHash?: boolean; json?: boolean }) => {
+    try {
+      await sdsCheckDriftCommand({
+        change: options.change,
+        updateHash: options.updateHash,
+        json: options.json,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('compile-schema')
+  .description('Generate capability.schema.json from capability.yaml')
+  .option('--change <id>', 'Change name')
+  .option('--dry-run', 'Preview output without writing files')
+  .option('--force', 'Overwrite existing generated files')
+  .action(async (options: { change?: string; dryRun?: boolean; force?: boolean }) => {
+    try {
+      await sdsCompileSchemaCommand({
+        change: options.change,
+        dryRun: options.dryRun,
+        force: options.force,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('compose-from-library <part-id>')
+  .description('Instantiate a library part into the current change directory')
+  .option('--change <id>', 'Change name')
+  .option('--vars <key=value...>', 'Variable substitutions (repeatable)', (val, acc: string[]) => [...acc, val], [])
+  .option('--dry-run', 'Preview output without writing files')
+  .action(async (partId: string, options: { change?: string; vars?: string[]; dryRun?: boolean }) => {
+    try {
+      await sdsComposeFromLibraryCommand(partId, {
+        change: options.change,
+        vars: options.vars,
+        dryRun: options.dryRun,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('compute-surface')
+  .description('Compute capability surface from capability.yaml + controls.md + risk.md')
+  .option('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change?: string; json?: boolean }) => {
+    try {
+      await sdsComputeSurfaceCommand({ change: options.change, json: options.json });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('simulate-capability')
+  .description('Generate simulation.md from capability graph and failure injection analysis')
+  .option('--change <id>', 'Change name')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change?: string; json?: boolean }) => {
+    try {
+      await sdsSimulateCapabilityCommand({ change: options.change, json: options.json });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('traceability-check')
+  .description('Generate or validate traceability.md from XML-tagged artifact blocks')
+  .option('--change <id>', 'Change name')
+  .option('--validate', 'Validate only — do not write traceability.md')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change?: string; validate?: boolean; json?: boolean }) => {
+    try {
+      await sdsTraceabilityCheckCommand({
+        change: options.change,
+        validate: options.validate,
+        json: options.json,
+      });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('extract-library-parts')
+  .description('Scan change artifacts for XML-tagged blocks without library_source provenance')
+  .option('--change <id>', 'Change name')
+  .option('--defer-all', 'Write all candidates to extraction-backlog.yaml without blocking')
+  .option('--json', 'Output as JSON')
+  .action(async (options: { change?: string; deferAll?: boolean; json?: boolean }) => {
+    try {
+      await sdsExtractLibraryPartsCommand({
+        change: options.change,
+        deferAll: options.deferAll,
+        json: options.json,
+      });
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);

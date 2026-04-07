@@ -1,0 +1,107 @@
+name: sds-brownfield
+version: 1
+description: SDS brownfield tier — changes to undocumented or legacy systems. Requires discovery artifacts in addition to standard-tier artifacts.
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Why this change exists and why it should happen now
+    template: proposal.md
+    instruction: |
+      Create the proposal document that establishes WHY this change is needed.
+      Does NOT contain requirements, architecture decisions, or implementation details.
+    requires: []
+
+  - id: brief
+    generates: brief.md
+    description: Stakeholder, problem, and environment context
+    template: brief.md
+    instruction: |
+      Create the brief capturing stakeholder and environment context.
+      For brownfield changes, include current-state inventory of the legacy system as known.
+      Mark gaps explicitly: "UNKNOWN — requires discovery".
+      Does NOT contain requirements or acceptance criteria.
+    requires:
+      - proposal
+
+  - id: brownfield-notes
+    generates: brownfield-notes.md
+    description: Discovery findings, dependency map, and unknown inventory
+    template: brownfield-notes.md
+    instruction: |
+      Complete the brownfield discovery notes. This artifact is the output of investigation
+      into the legacy system before authoring requirements.
+
+      Sections:
+      - **Dependency Inventory**: All systems, services, and data stores touched by this change.
+        For each: document behavior or mark as UNKNOWN with a reason.
+      - **Implicit Contract Inventory**: Undocumented behaviors other systems rely on.
+        These are breakage risks that requirements must account for.
+      - **Risk Surface Map**: Identified failure modes from legacy system state.
+      - **Unknown Inventory**: Explicit list of what remains unknown and why.
+
+      An honest UNKNOWN list is better than false confidence.
+      Run `/sds:brownfield-scan` for guided discovery.
+    requires:
+      - brief
+
+  - id: prd
+    generates: prd.md
+    description: Outcomes, requirements, and acceptance criteria
+    template: prd.md
+    instruction: |
+      Create the PRD. Requirements must account for findings in brownfield-notes.md.
+      Implicit contracts identified in discovery must be reflected as constraints or NFRs.
+      Use `<requirement id="REQ-NNN">` XML tags.
+      Does NOT contain architecture decisions.
+    requires:
+      - brownfield-notes
+
+  - id: architecture
+    generates: architecture.md
+    description: System topology, interfaces, and tradeoffs
+    template: architecture.md
+    instruction: |
+      Create the architecture document. Dependency graph must reflect brownfield-notes.md findings.
+      Implicit contracts must appear as interface definitions.
+      Use `<decision id="ADR-NNN">` XML tags linked to requirements.
+      Does NOT contain requirements.
+    requires:
+      - prd
+
+  - id: design
+    generates: design.md
+    description: Technical decisions specific to this change
+    template: design.md
+    instruction: |
+      Create the design document. Address how the implementation handles the legacy constraints
+      identified in brownfield-notes.md. Include migration and rollback considerations.
+    requires:
+      - architecture
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Delta specifications for capabilities added or modified
+    template: spec.md
+    instruction: |
+      Create spec files. Use XML tags. Requirements must reflect discovery findings.
+      ADDED, MODIFIED, REMOVED, RENAMED delta operations.
+    requires:
+      - prd
+
+  - id: tasks
+    generates: tasks.md
+    description: Ordered implementation checklist
+    template: tasks.md
+    instruction: |
+      Create the task list. Include discovery and validation steps specific to brownfield context.
+      Each task: `- [ ] X.Y Task description`. Order by dependency.
+    requires:
+      - specs
+      - design
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    Read context files including brownfield-notes.md, work through pending tasks,
+    mark complete as you go. Pause if you hit blockers or undocumented behavior.

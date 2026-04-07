@@ -1,0 +1,64 @@
+id: TODO_replace_with_snake_case_id
+kind: capability   # capability | composite
+version: 0.1.0
+description: >
+  TODO: One-sentence description of what this capability does.
+
+# Input fields accepted by this capability.
+# Expanded form: { name, type, description, required: true }
+# Inline form: "field_name: TypeName"
+inputs:
+  - name: TODO_input_field
+    type: string
+    description: TODO description
+    required: true
+
+# Output fields produced by this capability.
+outputs:
+  - name: TODO_output_field
+    type: string
+    description: TODO description
+    required: true
+
+# Conditions that must be true at invocation time.
+preconditions:
+  - "TODO: condition that must be satisfied at invocation"
+
+# Effect classification — all default to false.
+effects:
+  reversible: false           # Can the effect be undone?
+  external: false             # Does this cross a trust boundary?
+  idempotent: false           # Safe to retry without side effects?
+  produces_evidence: false    # Does this emit an audit artifact? (required if external: true)
+
+# Composability graph — IDs reference primitive capability IDs (snake_case).
+composability:
+  compatible_with:
+    - audit_log               # TODO: adjust or remove
+  conflicts_with: []
+  requires_before:
+    - audit_log               # TODO: adjust or remove
+  requires_after: []
+
+# Invariants that are always true after successful execution.
+guarantees:
+  - TODO: Invariant statement — what is always true after execution
+
+# BAML binding — links this capability to a BAML function stub.
+# Run 'openspec sds compile-baml' to generate the stub.
+baml_binding:
+  function: TODOFunctionName    # Target BAML function name (PascalCase)
+  auto_generate: true           # Set true to generate a stub via /sds:compile-baml
+  test_inputs:                  # Canonical test inputs for /sds:check-drift
+    - TODO_input_field: "example value"
+
+# Domain tags matching the primitive registry taxonomy.
+tags:
+  - TODO-domain-tag             # e.g., governance, insurance, orchestration
+
+# Populated by /sds:check-drift after a verified execution run.
+# DO NOT edit manually.
+# validation:
+#   hash: <64-char hex SHA-256>
+#   verified_at: <ISO8601>
+#   verified_version: 0.1.0

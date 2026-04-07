@@ -1,0 +1,137 @@
+name: sds-standard
+version: 1
+description: SDS standard tier — feature-level work with stakeholders, requirements, and architecture decisions.
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Why this change exists and why it should happen now
+    template: proposal.md
+    instruction: |
+      Create the proposal document that establishes WHY this change is needed.
+
+      Sections:
+      - **Why**: Problem or opportunity. What does this solve? Why now?
+      - **What Changes**: Bullet list. Mark breaking changes with **BREAKING**.
+      - **Capabilities**: New and modified capabilities (each gets a delta spec).
+      - **Impact**: Affected code, APIs, dependencies, systems.
+
+      Does NOT contain requirements, architecture decisions, or implementation details.
+    requires: []
+
+  - id: brief
+    generates: brief.md
+    description: Stakeholder, problem, and environment context
+    template: brief.md
+    instruction: |
+      Create the brief that captures stakeholder and environment context.
+
+      Sections:
+      - **Stakeholders**: Who is affected by this change? What are their roles?
+      - **Current State**: How does the system work today? What is the brownfield context?
+      - **Problem Statement**: What specific pain does this change address?
+      - **Environmental Context**: Constraints, compliance context, organizational factors.
+
+      Does NOT contain requirements or acceptance criteria.
+      Does NOT contain architecture decisions.
+    requires:
+      - proposal
+
+  - id: prd
+    generates: prd.md
+    description: Outcomes, requirements, and acceptance criteria
+    template: prd.md
+    instruction: |
+      Create the PRD that defines WHAT the system must do.
+
+      Sections:
+      - **User Outcomes**: What outcomes does this change enable for users?
+      - **Functional Requirements**: Use `<requirement id="REQ-NNN">` XML tags.
+        Each requirement uses SHALL/MUST language and has at least one linked scenario.
+      - **Non-Functional Requirements**: Performance, reliability, security, scalability.
+      - **Constraints**: Technical or organizational constraints on the solution.
+      - **Scope Boundaries**: Explicit list of what is OUT of scope.
+      - **Success Metrics**: Measurable criteria for evaluating success.
+
+      Does NOT contain architecture decisions.
+      Does NOT contain implementation details.
+    requires:
+      - brief
+
+  - id: architecture
+    generates: architecture.md
+    description: System topology, interfaces, and tradeoffs
+    template: architecture.md
+    instruction: |
+      Create the architecture document that defines the system structure.
+
+      Sections:
+      - **System Boundaries**: What is in scope, what is external.
+      - **Component Interfaces**: APIs, contracts, data flows between components.
+      - **Dependency Graph**: External systems and services this change depends on.
+      - **Trust Zones**: Where trust boundaries exist; which zones each component operates in.
+      - **Control Points**: Where policy enforcement occurs.
+      - **Architecture Decisions**: Use `<decision id="ADR-NNN">` XML tags.
+        Each decision must link to at least one `<requirement>` and record alternatives considered.
+
+      Does NOT contain requirements.
+    requires:
+      - prd
+
+  - id: design
+    generates: design.md
+    description: Technical decisions specific to this change
+    template: design.md
+    instruction: |
+      Create the design document that explains HOW to implement the change.
+
+      Sections:
+      - **Implementation Approach**: High-level approach and rationale.
+      - **Chosen Patterns**: Which patterns from library/ or design patterns are used and why.
+      - **Rejected Alternatives**: What was considered and why it was not chosen.
+      - **Rationale**: The reasoning behind key choices.
+
+      Scoped to this change only. Does NOT duplicate architecture or requirements.
+    requires:
+      - architecture
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Delta specifications for capabilities added or modified
+    template: spec.md
+    instruction: |
+      Create spec files defining WHAT the system should do. One file per capability.
+
+      Use XML tags for structured content:
+      ```
+      <requirement id="REQ-001">
+      The system SHALL ...
+      </requirement>
+
+      <scenario id="SCN-001" requirement="REQ-001">
+      WHEN ...
+      THEN ...
+      </scenario>
+      ```
+
+      Delta operations: ADDED, MODIFIED, REMOVED, RENAMED Requirements.
+    requires:
+      - prd
+
+  - id: tasks
+    generates: tasks.md
+    description: Ordered implementation checklist
+    template: tasks.md
+    instruction: |
+      Create the task list. Each task: `- [ ] X.Y Task description`.
+      Group under ## numbered headings. Order by dependency.
+      Reference specs for what, design for how.
+    requires:
+      - specs
+      - design
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    Read context files, work through pending tasks, mark complete as you go.
+    Pause if you hit blockers or need clarification.
