@@ -49,4 +49,7 @@ export type { SimulateCapabilityOptions } from './sds-simulate-capability.js';
 export { sdsTraceabilityCheckCommand } from './sds-traceability-check.js';
 export type { TraceabilityCheckOptions } from './sds-traceability-check.js';
 
+export { sdsGenerateCapabilitiesCommand } from './sds-generate-capabilities.js';
+export type { GenerateCapabilitiesOptions } from './sds-generate-capabilities.js';
+
 export { DEFAULT_SCHEMA } from './shared.js';

@@ -82,7 +82,6 @@ describe('sds check-drift command', () => {
 
       const output = getOutput(result);
       expect(output).toContain('capability.yaml not found');
-      expect(output).toContain('capability.yaml is required');
     });
 
     it('provides helpful error message about creating capability.yaml', async () => {

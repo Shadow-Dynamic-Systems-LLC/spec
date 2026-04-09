@@ -13,7 +13,7 @@ import path from 'path';
 import * as fs from 'fs';
 import { parse as parseYaml } from 'yaml';
 import { loadChangeContext } from '../../core/artifact-graph/index.js';
-import { validateChangeExists } from './shared.js';
+import { validateChangeExists, resolveCapabilityYaml } from './shared.js';
 import {
   parseCapabilityYaml,
   normalizeField,
@@ -224,14 +224,9 @@ export async function sdsCompileBamlCommand(options: CompileBamlOptions): Promis
       console.log(`Proceeding anyway — no capability.yaml may be present.`);
     }
     const changeDir = path.join(projectRoot, 'openspec', 'changes', changeName);
-    const capabilityPath = path.join(changeDir, 'capability.yaml');
-
-    if (!fs.existsSync(capabilityPath)) {
-      spinner.fail(`capability.yaml not found at: openspec/changes/${changeName}/capability.yaml`);
-      throw new Error(
-        `capability.yaml is required for /sds:compile-baml.\n` +
-          `Run 'openspec instructions capability' to create it.`
-      );
+    const { filePath: capabilityPath, source } = resolveCapabilityYaml(projectRoot, changeName);
+    if (source === 'specs') {
+      console.log(`Note: reading capability.yaml from promoted location (openspec/specs/${changeName}/)`);
     }
 
     const raw = parseYaml(fs.readFileSync(capabilityPath, 'utf-8'));

@@ -147,6 +147,39 @@ export async function validateChangeExists(
 }
 
 /**
+ * Resolves the path to capability.yaml for a change.
+ *
+ * Search order:
+ *   1. openspec/changes/<name>/capability.yaml  (active change)
+ *   2. openspec/specs/<name>/capability.yaml    (promoted/archived change)
+ *
+ * Returns { filePath, source } where source is 'changes' or 'specs'.
+ * Throws if neither location has capability.yaml.
+ */
+export function resolveCapabilityYaml(
+  projectRoot: string,
+  changeName: string
+): { filePath: string; source: 'changes' | 'specs' } {
+  const changesPath = path.join(projectRoot, 'openspec', 'changes', changeName, 'capability.yaml');
+  if (fs.existsSync(changesPath)) {
+    return { filePath: changesPath, source: 'changes' };
+  }
+
+  const specsPath = path.join(projectRoot, 'openspec', 'specs', changeName, 'capability.yaml');
+  if (fs.existsSync(specsPath)) {
+    return { filePath: specsPath, source: 'specs' };
+  }
+
+  throw new Error(
+    `capability.yaml not found for '${changeName}'.\n` +
+      `Checked:\n` +
+      `  openspec/changes/${changeName}/capability.yaml\n` +
+      `  openspec/specs/${changeName}/capability.yaml\n` +
+      `Run 'openspec instructions capability --change ${changeName}' to create it.`
+  );
+}
+
+/**
  * Validates that a schema exists and returns available schemas if not.
  *
  * @param schemaName - The schema name to validate

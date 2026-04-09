@@ -24,7 +24,7 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { loadChangeContext } from '../../core/artifact-graph/index.js';
-import { validateChangeExists } from './shared.js';
+import { validateChangeExists, resolveCapabilityYaml } from './shared.js';
 import {
   parseCapabilityYaml,
   type CapabilityYaml,
@@ -269,21 +269,15 @@ export async function sdsCheckDriftCommand(options: CheckDriftOptions): Promise<
   try {
     const projectRoot = process.cwd();
     const changeName = await validateChangeExists(options.change, projectRoot);
-    // TODO(Phase 5): also search specs/<changeName>/capability.yaml for promoted changes
     const context = loadChangeContext(projectRoot, changeName);
     if (!context.schemaName.startsWith('sds-governed')) {
       spinner.warn(`check-drift is intended for governed-tier changes (schema: ${context.schemaName}).`);
       console.log(`Proceeding anyway — no capability.yaml may be present.`);
     }
-    const changeDir = path.join(projectRoot, 'openspec', 'changes', changeName);
-    const capabilityPath = path.join(changeDir, 'capability.yaml');
 
-    if (!fs.existsSync(capabilityPath)) {
-      spinner.fail(`capability.yaml not found at: openspec/changes/${changeName}/capability.yaml`);
-      throw new Error(
-        `capability.yaml is required for /sds:check-drift.\n` +
-          `Run 'openspec instructions capability' to create it.`
-      );
+    const { filePath: capabilityPath, source } = resolveCapabilityYaml(projectRoot, changeName);
+    if (source === 'specs') {
+      console.log(`Note: reading capability.yaml from promoted location (openspec/specs/${changeName}/)`);
     }
 
     const raw = parseYaml(fs.readFileSync(capabilityPath, 'utf-8'));

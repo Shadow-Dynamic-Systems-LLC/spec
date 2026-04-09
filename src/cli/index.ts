@@ -33,6 +33,7 @@ import {
   sdsComputeSurfaceCommand,
   sdsSimulateCapabilityCommand,
   sdsTraceabilityCheckCommand,
+  sdsGenerateCapabilitiesCommand,
   DEFAULT_SCHEMA,
   type StatusOptions,
   type InstructionsOptions,
@@ -690,6 +691,20 @@ sdsCmd
         validate: options.validate,
         json: options.json,
       });
+    } catch (error) {
+      console.log();
+      ora().fail(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+sdsCmd
+  .command('generate-capabilities')
+  .description('Regenerate CAPABILITIES.md from library/capability/registry.yaml')
+  .option('--dry-run', 'Preview output without writing file')
+  .action(async (options: { dryRun?: boolean }) => {
+    try {
+      await sdsGenerateCapabilitiesCommand({ dryRun: options.dryRun });
     } catch (error) {
       console.log();
       ora().fail(`Error: ${(error as Error).message}`);
