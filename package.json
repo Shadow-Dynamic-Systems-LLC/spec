@@ -70,6 +70,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@boundaryml/baml": "^0.220.0",
     "@inquirer/core": "^10.2.2",
     "@inquirer/prompts": "^7.8.0",
     "chalk": "^5.5.0",

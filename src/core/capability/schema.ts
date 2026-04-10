@@ -79,6 +79,11 @@ const BamlBindingSchema = z.object({
     .array(z.record(z.string(), z.unknown()))
     .min(1, { message: 'At least one test_inputs entry required for drift checking' })
     .optional(),
+  /**
+   * Maps BAML function parameter names to test_input keys.
+   * If omitted, test_inputs are passed to the function as-is.
+   */
+  input_mapping: z.record(z.string(), z.string()).optional(),
 });
 
 export type BamlBinding = z.infer<typeof BamlBindingSchema>;

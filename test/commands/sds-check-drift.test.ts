@@ -358,7 +358,10 @@ describe('sds check-drift command', () => {
   });
 
   describe('--update-hash functionality', () => {
-    it('writes validation block when --update-hash is used with valid test_inputs', async () => {
+    it('reports blocked (not fail) for --update-hash when no compiled stub exists', async () => {
+      // Live hash verification requires a compiled .baml stub (run compile-baml first).
+      // Without a stub, the hash check is BLOCKED, not FAIL — so --update-hash skips
+      // with a "run compile-baml first" message rather than writing a structural hash.
       const changeDir = await createTestChange('update-hash-test');
 
       const capabilityWithTestInputs = [
@@ -382,20 +385,17 @@ describe('sds check-drift command', () => {
       );
 
       const output = getOutput(result);
-      expect(output).toContain('Updated validation.hash in capability.yaml');
-
-      // Verify that validation block was added to the file
-      const updatedContent = await fs.readFile(path.join(changeDir, 'capability.yaml'), 'utf-8');
-      expect(updatedContent).toContain('validation:');
-      expect(updatedContent).toContain('hash:');
-      expect(updatedContent).toContain('verified_at:');
-      expect(updatedContent).toContain('verified_version: 1.0.0');
+      // Without a compiled stub, --update-hash cannot execute the capability
+      expect(output).toContain('compile-baml');
+      // No hard failure — just blocked
+      expect(result.exitCode).not.toBe(1);
     });
 
-    it('detects hash mismatch and refuses update when inputs change', async () => {
+    it('hash check is blocked (not fail) when no compiled stub exists', async () => {
+      // Without a compiled .baml stub, hash verification is BLOCKED rather than FAIL.
+      // FAIL requires a live execution result that differs from the baseline.
       const changeDir = await createTestChange('hash-mismatch');
 
-      // Create capability with test_inputs and incorrect hash
       const capabilityWithWrongHash = [
         'id: hash_mismatch_capability',
         'version: 1.0.0',
@@ -407,7 +407,7 @@ describe('sds check-drift command', () => {
         '  test_inputs:',
         '    - input_field: current_value',
         'validation:',
-        '  hash: "0000000000000000000000000000000000000000000000000000000000000000"', // Wrong hash
+        '  hash: "0000000000000000000000000000000000000000000000000000000000000000"',
         '  verified_at: "2023-01-01T12:00:00Z"',
         '  verified_version: "1.0.0"',
       ].join('\n');
@@ -415,15 +415,16 @@ describe('sds check-drift command', () => {
       await fs.writeFile(path.join(changeDir, 'capability.yaml'), capabilityWithWrongHash);
 
       const result = await runCLI(
-        ['sds', 'check-drift', '--change', 'hash-mismatch', '--update-hash'],
+        ['sds', 'check-drift', '--change', 'hash-mismatch'],
         { cwd: tempDir }
       );
 
       const output = getOutput(result);
-      expect(output).toContain('Hash mismatch — structural drift detected');
-      expect(output).toContain('--update-hash refused');
-      expect(output).toContain('resolve all FAIL checks');
-      expect(result.exitCode).toBe(1);
+      // No hard failure without a stub — reported as blocked
+      expect(output).toContain('output_hash_match');
+      expect(output).toContain('~'); // blocked indicator
+      // Should not exit with failure code
+      expect(result.exitCode).not.toBe(1);
     });
 
     it('refuses --update-hash when there are failing checks', async () => {
